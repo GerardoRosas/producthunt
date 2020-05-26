@@ -1,6 +1,7 @@
 import React, {Fragment} from 'react';
 import Header from './Header'
 import {Global, css } from '@emotion/core';
+import Head from 'next/head';
 
 
 const Layout = props => {
@@ -12,6 +13,7 @@ const Layout = props => {
                     :root{
                         --gris: #3d3d3d;
                         --gris2: #6F6F6F;
+                        --gris3: #e1e1e1;   
                         --naranja: #DA552F;
                     }
                     html{
@@ -28,6 +30,13 @@ const Layout = props => {
                         margin: 0 0 2rem;
                         line-height: 1.5;
                     }
+                    h1,h2{
+                        font-family: 'Roboto Slab', serif;
+                        font-weight: 700;
+                    }
+                    h3{
+                        font-family: 'PT Sans', sans-serif;
+                    }
                     ul{
                         list-style: none;
                         margin: 0;
@@ -38,9 +47,17 @@ const Layout = props => {
                     }
                 `}
             />
-            <Header>
+            <Head>
+                <html lang="es" />
+                <title>ProductHunt Firebase y Next.js</title>
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" 
+                    integrity="sha256-l85OmPOjvil/SOvVt3HnSSjzF1TUMyT9eV0c2BzEGzU=" crossorigin="anonymous" />
+                <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&family=Roboto+Slab:wght@400;700&display=swap" rel="stylesheet"/>
+                <link href="/static/css/app.css" rel="stylesheet"/>
+                
+            </Head>
 
-            </Header>
+            <Header />
 
             <main>
                 {props.children}
