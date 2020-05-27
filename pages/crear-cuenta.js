@@ -33,8 +33,6 @@ const CrearCuenta = () => {
   }
 
 
-
-
   return (
     <div>
       <Layout>
