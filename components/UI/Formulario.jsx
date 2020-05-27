@@ -36,5 +36,16 @@ export const InputSubmit = styled.input`
     &:hover{
         cursor: pointer;
     }
+`;
 
+export const Errores = styled.p`
+    background-color: red;
+    padding: 1rem;
+    font-family: 'PT Sans', sans-serif;
+    font-weight: 700;
+    text-align: center;
+    color: #FFF;
+    text-transform: uppercase;
+    font-size: 1.4rem;
+    margin: 2rem 0;
 `;
