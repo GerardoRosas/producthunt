@@ -19,16 +19,27 @@ const ContenedorProducto = styled.div`
     }
 `;
 
+const CreadorProducto = styled.p`
+    padding: .5rem 2rem;
+    background-color: #DA552F;
+    color: #fff;
+    text-transform: uppercase;
+    font-weight: bold;
+    text-align: center;
+    display: inline-block;
+`;
+
 const Producto = () => {
 
     const [producto, guardarProducto ] = useState({});
     const [ error, guardarError ] =  useState(false);
+    const [ nuevoComentario, guardarNuevoComentario ] = useState({});
 
     //Routing para obtener el id actual
     const router = useRouter();
     const { query: {id}} = router;
 
-    const { firebase } = useContext(FirebaseContext);
+    const { firebase, usuario } = useContext(FirebaseContext);
 
     useEffect(() => {
         if(id){
@@ -43,11 +54,81 @@ const Producto = () => {
             }
             obtenerProducto();
         }
-    }, [id]);
+    }, [id, producto]);
 
-    const {comentarios, empresa, descripcion, votos, nombre, url, urlImagen, creado, creador } = producto;
+    const {comentarios, empresa, descripcion, votos, nombre, url, urlImagen, creado, 
+        creador, haVotado } = producto;
 
-    console.log(producto)
+    //Administrar y validar los votos
+    const votarProducto = () => {
+        if(!usuario){
+            return router.push('/login')
+        }
+
+        //Obtener y sumar un nuevo voto
+        const nuevoTotal = votos + 1;
+
+        //Verificar si el usuario actual ha votado
+        if(haVotado.includes(usuario.uid)) return;
+
+        //Guardar el id del usuario que ha votado
+        const hanVotado = [...haVotado, usuario.uid];
+        
+
+        //Actualizar en la base de datos
+        firebase.db.collection('productos').doc(id).update({ 
+            votos: nuevoTotal, 
+            haVotado: hanVotado 
+        });
+
+        //Actualizar el state
+        guardarProducto({
+            ...producto,
+            votos: nuevoTotal
+        })
+    }
+
+    //Funciones para crear comentarios
+    const comentarioChange = e => {
+        guardarNuevoComentario({
+            ...nuevoComentario,
+            [e.target.name] : e.target.value
+        })
+    }
+
+    //Identifica si el comentario es del creador del producto
+    const esCreador = id => {
+        if(creador.id === id) {
+            return true;
+        }
+    }
+
+    const agregarComentario = e => {
+        e.preventDefault();
+        if(!usuario){
+            return router.push('/login')
+        }
+
+        //informacion extra al comentario
+        nuevoComentario.usuarioId = usuario.uid;
+        nuevoComentario.usuarioNombre = usuario.displayName;
+
+        //Tomar copia de comentarios y agregar al arreglo
+        const nuevosComentarios = [...comentarios, nuevoComentario];
+
+        //Actualizar la base de datos
+        firebase.db.collection('productos').doc(id).update({
+            comentarios: nuevosComentarios
+        })
+
+        //Actuaizar el state
+        guardarProducto({
+            ...producto,
+            comentarios: nuevosComentarios
+        })
+
+    }
+    
 
     return ( 
         <Layout>
@@ -63,37 +144,68 @@ const Producto = () => {
 
                     <ContenedorProducto>
                         <div>
-                            <p>Publicado hace: {formatDistanceToNow( new Date(creado), {locale: es})}</p>
+                            {/* <p>Publicado hace: {formatDistanceToNow( new Date(creado), {locale: es})}</p> */}
 
                             <img src={urlImagen} />
                             <p>Por: {creador.nombre} </p>
                             <p>{descripcion}</p>
 
-                            <h2>Agrega tu comentario</h2>
-                            <form>
-                                <Campo>
-                                    <input
-                                        type="text"
-                                        name="mensaje"
-                                    />
-                                </Campo>
-                                <InputSubmit
-                                    type="submit"
-                                    value="Agregar Comentario"
-                                />
-                            </form>
+                            {usuario && (
+                                <>
+                                    <h2>Agrega tu comentario</h2>
+                                    <form
+                                        onSubmit={agregarComentario}
+                                    >
+                                        <Campo>
+                                            <input
+                                                type="text"
+                                                name="mensaje"
+                                                onChange={comentarioChange}
+                                            />
+                                        </Campo>
+                                        <InputSubmit
+                                            type="submit"
+                                            value="Agregar Comentario"
+                                        />
+                                    </form>
+                                </>
+                            )}
 
                             <h2                                                 
                                 css={css`
                                     margin: 2rem 0;
                                 `}
                             >Comentarios</h2>
-                            {comentarios.map(comentario => (
-                                <li>
-                                    <p>{comentario.nombre}</p>
-                                    <p>Escrito por: {comentario.usuarioNombre}</p>
-                                </li>
-                            ))}
+
+                            {comentarios.length === 0 ? "Aun no hay comentarios" : (
+                                <ul>
+                                    {comentarios.map(comentario => (
+                                        <li
+                                            css={css`
+                                                border: 1px solid #e1e1e1;
+                                                padding: 2rem;
+                                            `}
+                                        >
+                                            <p>{comentario.mensaje}</p>
+                                            <p>Escrito por: 
+                                                <span
+                                                    css={css`
+                                                        font-weight: bold;
+                                                    `}
+                                                >
+                                                   {''} {comentario.usuarioNombre}
+                                                </span>
+                                            </p>
+                                            {esCreador(nuevoComentario.usuarioId) && 
+                                                <CreadorProducto>
+                                                    Es Creador
+                                                </CreadorProducto>
+                                            }
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            
                         </div>
                         <aside>
                             <Boton
@@ -112,7 +224,11 @@ const Producto = () => {
                                     text-align: center;
                                 `}>{votos} Votos</p>
 
-                                <Boton>Votar</Boton>
+                                {usuario && (
+                                    <Boton
+                                        onClick={votarProducto}
+                                    >Votar</Boton>
+                                )}
                             </div>
                         </aside>
                     </ContenedorProducto>
