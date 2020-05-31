@@ -1,15 +1,14 @@
 import React, { useEffect, useContext, useState } from 'react';
-import {useRouter} from 'next/router';
-import Layout from '../../components/layout/Layout';
-import styled from '@emotion/styled';
-import { css } from '@emotion/core';
-import { es } from 'date-fns/locale';
+import { useRouter } from 'next/router';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
-import { Campo, InputSubmit } from '../../components/UI/Formulario';
-import Boton from '../../components/UI/Boton';
-
+import { es } from 'date-fns/locale';
 import { FirebaseContext } from '../../firebase';
+import Layout from '../../components/layout/Layout';
 import Error404 from '../../components/layout/404';
+import { css } from '@emotion/core';
+import styled from '@emotion/styled';
+import { Campo, InputSubmit } from '../../components/ui/Formulario';
+import Boton from '../../components/ui/Boton';
 
 const ContenedorProducto = styled.div`
     @media(min-width: 768px){
@@ -34,6 +33,7 @@ const Producto = () => {
     const [producto, guardarProducto ] = useState({});
     const [ error, guardarError ] =  useState(false);
     const [ nuevoComentario, guardarNuevoComentario ] = useState({});
+    const [ consultarDB, guardarConsultarDB ] = useState(true);
 
     //Routing para obtener el id actual
     const router = useRouter();
@@ -42,19 +42,23 @@ const Producto = () => {
     const { firebase, usuario } = useContext(FirebaseContext);
 
     useEffect(() => {
-        if(id){
+        if(id && consultarDB){
             const obtenerProducto = async () => {
                 const productoQuery = await firebase.db.collection('productos').doc(id);
                 const producto = await productoQuery.get();
                 if(producto.exists){
                     guardarProducto(producto.data());
+                    guardarConsultarDB(false);
                 }else{
                     guardarError(true);
+                    guardarConsultarDB(false);
                 }
             }
             obtenerProducto();
         }
-    }, [id, producto]);
+    }, [id]);
+
+    if(Object.keys(producto).length === 0 && !error)  return 'Cargando...';
 
     const {comentarios, empresa, descripcion, votos, nombre, url, urlImagen, creado, 
         creador, haVotado } = producto;
@@ -86,6 +90,8 @@ const Producto = () => {
             ...producto,
             votos: nuevoTotal
         })
+
+        guardarConsultarDB(true); //Hay un voto y consultar a la base de datos
     }
 
     //Funciones para crear comentarios
@@ -128,6 +134,33 @@ const Producto = () => {
         })
 
     }
+
+    //Funcion que revisa que el creador del producto sea el mismo autenticado
+    const puedeBorrar = () => {
+        if(!usuario) return false;
+
+        if(creador.id === usuario.uid){
+            return true
+        }
+    }
+
+    //Elimina producto de la base de datos
+    const eliminarProducto = async () => {
+        if(!usuario){
+            return router.push('/login')
+        }
+
+        if(creador.id !== usuario.uid){
+            return router.push('/login');
+        }
+
+        try {
+            await firebase.db.collection('productos').doc(id).delete()
+            router.push('/');
+        } catch (error) {
+            console.log(error);
+        }
+    }
     
 
     return ( 
@@ -147,7 +180,7 @@ const Producto = () => {
                             {/* <p>Publicado hace: {formatDistanceToNow( new Date(creado), {locale: es})}</p> */}
 
                             <img src={urlImagen} />
-                            <p>Por: {creador.nombre} </p>
+                            {/* <p>Por: {creador.nombre} </p> */}
                             <p>{descripcion}</p>
 
                             {usuario && (
@@ -177,10 +210,11 @@ const Producto = () => {
                                 `}
                             >Comentarios</h2>
 
-                            {comentarios.length === 0 ? "Aun no hay comentarios" : (
+                            {comentarios.length === 0 ? "Aún no hay comentarios" : (
                                 <ul>
-                                    {comentarios.map(comentario => (
-                                        <li
+                                    {comentarios.map((comentario, i) => (
+                                        <li 
+                                            key={`${comentario.usuarioId}-${i}`}
                                             css={css`
                                                 border: 1px solid #e1e1e1;
                                                 padding: 2rem;
@@ -190,17 +224,13 @@ const Producto = () => {
                                             <p>Escrito por: 
                                                 <span
                                                     css={css`
-                                                        font-weight: bold;
+                                                        font-weight:bold;
                                                     `}
                                                 >
-                                                   {''} {comentario.usuarioNombre}
+                                                {''} {comentario.usuarioNombre}
                                                 </span>
                                             </p>
-                                            {esCreador(nuevoComentario.usuarioId) && 
-                                                <CreadorProducto>
-                                                    Es Creador
-                                                </CreadorProducto>
-                                            }
+                                            { esCreador( comentario.usuarioId ) && <CreadorProducto>Es Creador</CreadorProducto> }
                                         </li>
                                     ))}
                                 </ul>
@@ -232,6 +262,10 @@ const Producto = () => {
                             </div>
                         </aside>
                     </ContenedorProducto>
+
+                    {puedeBorrar() && <Boton
+                        onClick={eliminarProducto}
+                    >Eliminar Producto</Boton>}
                 </div>
             </>
 

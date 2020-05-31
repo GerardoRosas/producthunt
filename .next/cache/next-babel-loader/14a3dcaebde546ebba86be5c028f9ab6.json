@@ -1,0 +1,1 @@
+{"ast":null,"code":"import firebase from './firebase';\nimport FirebaseContext from '../firebase/context';\nexport { FirebaseContext };\nexport default firebase;","map":null,"metadata":{},"sourceType":"module"}
